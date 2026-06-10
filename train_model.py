@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
+from pyod.models.mcd import MCD
+from pyod.models.lof import LOF
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 import joblib
@@ -84,19 +86,18 @@ def train_domain_model(domain_name, folder_path, model_path, scaler_path):
     anomaly_ratio = round(df["anomaly"].mean(), 3)
     print(f"  Contamination : {anomaly_ratio}")
 
-    model = IsolationForest(
-        n_estimators=100,       # number of trees in the forest
-        contamination=anomaly_ratio,
-        random_state=42,
-        n_jobs=-1               # use all CPU cores
-    )
+    if domain_name == "Medical":
+        print(f"  Using: Local Outlier Factor (best for Medical)")
+        model = LOF(contamination=anomaly_ratio)
+    else:
+        print(f"  Using: Minimum Covariance Determinant (best for IT/Industrial)")
+        model = MCD(contamination=anomaly_ratio, random_state=42)
     model.fit(X_scaled)
 
     # ── Evaluate the model ─────────────────────────────
     # Isolation Forest returns -1 for anomaly, 1 for normal
     # We convert to 0/1 to match our labels
-    raw_preds = model.predict(X_scaled)
-    y_pred = np.where(raw_preds == -1, 1, 0)
+    y_pred = model.labels_
 
     print(f"\n  📊 Model Performance:")
     print(classification_report(y, y_pred, target_names=["Normal", "Anomaly"]))

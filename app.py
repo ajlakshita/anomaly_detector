@@ -127,8 +127,13 @@ def run_ml(df, numeric_cols, domain):
     X      = df[numeric_cols].values
     Xs     = scalers[domain].transform(X)
     preds  = models[domain].predict(Xs)
-    scores = models[domain].score_samples(Xs)
-    return np.where(preds == -1, 1, 0), scores
+    # PyOD returns 0=normal 1=anomaly directly
+    # score_samples not available in all PyOD models so we use decision_function
+    try:
+        scores = models[domain].decision_function(Xs)
+    except:
+        scores = np.zeros(len(df))
+    return preds, scores
 
 
 def make_hover(df, numeric_cols, zscores, z_f, iqr_f, ml_f, ml_scores):
